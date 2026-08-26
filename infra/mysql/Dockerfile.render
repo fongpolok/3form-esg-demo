@@ -3,7 +3,14 @@
 # through the image's own ENTRYPOINT the way `docker run mysql:8.0 <flags>`
 # or docker-compose's `command:` does, so the character-set flags never
 # reach mysqld correctly. A real Dockerfile's CMD (array form, still passed
-# through ENTRYPOINT ["docker-entrypoint.sh"]) sidesteps whatever that
-# difference is.
+# through ENTRYPOINT) sidesteps that.
+#
+# entrypoint.render.sh additionally answers Render's HTTP port scan (see its
+# own comment) — nmap-ncat is installed here, at build time, so container
+# startup doesn't pay a package-install cost on every boot/restart.
 FROM mysql:8.0
+RUN microdnf install -y nmap-ncat && microdnf clean all
+COPY infra/mysql/entrypoint.render.sh /entrypoint.render.sh
+RUN chmod +x /entrypoint.render.sh
+ENTRYPOINT ["/entrypoint.render.sh"]
 CMD ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
