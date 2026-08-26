@@ -6,11 +6,17 @@ services:
   # only way to get them running on the free plan.
   - type: web
     name: esg-mysql
-    runtime: image
-    image:
-      url: docker.io/library/mysql:8.0
+    runtime: docker
+    # `runtime: image` + `dockerCommand` exited immediately (status 128) —
+    # Render doesn't run that command through the image's own ENTRYPOINT the
+    # way `docker run`/docker-compose's `command:` does, so the charset
+    # flags never reached mysqld correctly. A real Dockerfile's CMD (array
+    # form, still passed through ENTRYPOINT ["docker-entrypoint.sh"]) does
+    # — verified locally (character_set_server: utf8mb4 confirmed) before
+    # switching to this.
+    dockerfilePath: ./infra/mysql/Dockerfile.render
+    dockerContext: .
     plan: free
-    dockerCommand: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     envVars:
       - key: MYSQL_ROOT_PASSWORD
         generateValue: true
@@ -49,7 +55,7 @@ services:
       - key: STORAGE_DRIVER
         value: local
       - key: PUBLIC_BASE_URL
-        value: https://esg-backend.onrender.com
+        value: https://esg-backend-zua5.onrender.com
       - key: SIMULATOR_DEVICE_API_KEY
         generateValue: true
 
@@ -61,7 +67,7 @@ services:
     plan: free
     envVars:
       - key: SIMULATOR_BACKEND_URL
-        value: https://esg-backend.onrender.com
+        value: https://esg-backend-zua5.onrender.com
       - key: SIMULATOR_DEVICE_API_KEY
         fromService:
           type: web

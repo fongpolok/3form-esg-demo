@@ -1,0 +1,9 @@
+# render.yaml's `dockerCommand` override on a plain `runtime: image` mysql:8.0
+# service exits immediately (status 128) — Render evidently doesn't run it
+# through the image's own ENTRYPOINT the way `docker run mysql:8.0 <flags>`
+# or docker-compose's `command:` does, so the character-set flags never
+# reach mysqld correctly. A real Dockerfile's CMD (array form, still passed
+# through ENTRYPOINT ["docker-entrypoint.sh"]) sidesteps whatever that
+# difference is.
+FROM mysql:8.0
+CMD ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
