@@ -1,0 +1,53 @@
+# Same as ./Dockerfile, except: runs entrypoint.render.sh (migrate + guarded
+# one-time seed) instead of migrate-then-start, since a hosted demo starts
+# from an empty database and needs the demo org/users/devices seeded once.
+FROM node:20-slim AS base
+WORKDIR /workspace
+
+# Puppeteer needs a real Chromium + its shared-lib dependencies present in
+# the image; this is why the backend image is not node:20-alpine.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-noto-cjk \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+FROM base AS deps
+COPY package.json package-lock.json* ./
+COPY packages/shared-types/package.json packages/shared-types/
+COPY packages/shared-validation/package.json packages/shared-validation/
+COPY apps/backend/package.json apps/backend/
+RUN npm install --workspace=@esg/backend --workspace=@esg/shared-types --workspace=@esg/shared-validation --include-workspace-root
+
+FROM deps AS build
+COPY tsconfig.base.json ./
+COPY packages/config packages/config
+COPY packages/shared-types packages/shared-types
+COPY packages/shared-validation packages/shared-validation
+COPY apps/backend apps/backend
+RUN npm run prisma:generate --workspace=@esg/backend
+RUN npm run build --workspace=@esg/shared-types --workspace=@esg/shared-validation
+RUN npm run build --workspace=@esg/backend
+# prisma/seed.ts is normally run via ts-node in dev (see package.json's
+# "prisma:seed") — compiling it here instead of shipping a hand-run
+# artifact means it can never drift out of sync with seed.ts/seed-data/*
+# the way a manually-committed seed.js could.
+RUN npx tsc -p apps/backend/prisma/tsconfig.seed.json
+
+FROM base AS runtime
+ENV NODE_ENV=production
+COPY --from=build /workspace/node_modules ./node_modules
+COPY --from=build /workspace/packages/shared-types packages/shared-types
+COPY --from=build /workspace/packages/shared-validation packages/shared-validation
+COPY --from=build /workspace/apps/backend/dist ./apps/backend/dist
+COPY --from=build /workspace/apps/backend/dist-seed ./apps/backend/dist-seed
+COPY --from=build /workspace/apps/backend/prisma ./apps/backend/prisma
+COPY --from=build /workspace/apps/backend/package.json ./apps/backend/package.json
+COPY apps/backend/entrypoint.render.sh ./apps/backend/entrypoint.render.sh
+RUN chmod +x ./apps/backend/entrypoint.render.sh
+
+WORKDIR /workspace/apps/backend
+EXPOSE 3000
+CMD ["./entrypoint.render.sh"]

@@ -6,6 +6,7 @@ build/
 .DS_Store
 coverage/
 apps/backend/generated/
+apps/backend/dist-seed/
 infra/uploads/
 *.tsbuildinfo
 .turbo/
