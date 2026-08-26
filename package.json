@@ -1,0 +1,47 @@
+{
+  "name": "esg-auditing-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ESG auditing dashboard for the Hong Kong recycling industry",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @esg/shared-types -w @esg/shared-validation",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build:shared && npm run build --workspaces --if-present",
+    "dev:backend": "npm run dev -w apps/backend",
+    "dev:ops-portal": "npm run dev -w apps/ops-portal",
+    "dev:client-portal": "npm run dev -w apps/client-portal",
+    "test:a11y": "node scripts/a11y-smoke-test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "eslint": "^9.9.0",
+    "@eslint/js": "^9.9.0",
+    "typescript-eslint": "^8.2.0",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-jsx-a11y": "^6.9.0",
+    "prettier": "^3.3.3",
+    "vitest": "^2.0.5",
+    "wcag-contrast": "^3.0.0",
+    "axe-core": "^4.10.0"
+  },
+  "allowScripts": {
+    "@nestjs/core@10.4.22": true,
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "argon2@0.40.3": true,
+    "esbuild@0.21.5": true,
+    "prisma@5.22.0": true,
+    "puppeteer@23.11.1": true,
+    "fsevents@2.3.3": true
+  }
+}

@@ -1,0 +1,70 @@
+/* Mirrors packages/ui/src/tokens.ts — that file is the source of truth; if
+   you change a value there, update it here too until Phase 5 wires up a
+   build step that generates this file instead of hand-mirroring it. */
+:root {
+  --color-navy-950: #0a1628;
+  --color-navy-800: #10233d;
+  --color-navy-700: #1b355a;
+
+  --color-surface-card: #ffffff;
+  --color-surface-page: #f4f6f9;
+  --color-surface-input: #f8fafc;
+
+  --color-border-placeholder: #d1d6e0;
+
+  --color-text-on-dark: #ffffff;
+  --color-text-icon: #1e293b;
+  --color-text-muted: #627288;
+
+  --color-accent-green: #00a878;
+  --color-accent-blue: #0d6efd;
+  --color-accent-amber: #f59e0b;
+  --color-accent-red: #de3545;
+
+  --color-action-green: #008660;
+
+  --color-status-success-bg: #e0f5ef;
+  --color-status-success-fg: #007c59;
+  --color-status-info-bg: #e2eeff;
+  --color-status-info-fg: #0c63e4;
+  --color-status-warning-bg: #fef3e2;
+  --color-status-warning-fg: #986207;
+  --color-status-danger-bg: #fbe7e9;
+  --color-status-danger-fg: #c32f3d;
+
+  --font-family-latin: 'Inter', system-ui, sans-serif;
+  --font-family-zh-hk: 'Noto Sans HK', 'Inter', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-surface-page);
+  color: var(--color-text-icon);
+  font-family: var(--font-family-latin);
+}
+
+/* Global focus-visible ring — plan §8: never outline:none without a
+   replacement. Every interactive element in packages/ui inherits this. */
+:focus-visible {
+  outline: 3px solid var(--color-status-info-fg);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1000;
+  background: var(--color-navy-950);
+  color: var(--color-text-on-dark);
+  padding: 0.75rem 1rem;
+  border-radius: 0 0 6px 0;
+}
+
+.skip-link:focus {
+  left: 0;
+}

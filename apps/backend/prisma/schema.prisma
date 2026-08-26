@@ -1,0 +1,693 @@
+// ESG Auditing Platform — data model.
+// See /Users/edward/.claude/plans/kind-swinging-moler.md §3 for the design rationale
+// (why metric_values is a constrained-EAV model, why emission_factors is
+// effective-dated, why corrections never UPDATE metric_values, etc).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// 3a. Org hierarchy, users, RBAC
+// ---------------------------------------------------------------------------
+
+enum EntityStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum Locale {
+  en
+  zh_HK
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum MembershipRole {
+  AUDITOR
+  SUPPLIER_ADMIN
+  SUPPLIER_STAFF
+  CLIENT_USER
+}
+
+enum ScopeType {
+  GLOBAL
+  SUPPLIER
+  FACILITY
+  CLIENT
+}
+
+model Supplier {
+  id         BigInt       @id @default(autoincrement())
+  name_en    String
+  name_zh    String
+  brn        String? // Business Registration Number
+  status     EntityStatus @default(ACTIVE)
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+
+  facilities Facility[]
+  clients    Client[]
+
+  @@map("suppliers")
+}
+
+model Facility {
+  id          BigInt       @id @default(autoincrement())
+  supplier_id BigInt
+  name_en     String
+  name_zh     String
+  address_en  String?
+  address_zh  String?
+  gfa_sqm     Decimal?     @db.Decimal(12, 2)
+  timezone    String       @default("Asia/Hong_Kong")
+  status      EntityStatus @default(ACTIVE)
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+
+  supplier          Supplier            @relation(fields: [supplier_id], references: [id])
+  devices           Device[]
+  work_orders       WorkOrder[]
+  transport_trips   TransportTrip[]
+  reporting_periods ReportingPeriod[]
+  metric_values     MetricValue[]
+  reports           Report[]
+
+  @@index([supplier_id])
+  @@map("facilities")
+}
+
+model Client {
+  id            BigInt       @id @default(autoincrement())
+  supplier_id   BigInt
+  name_en       String
+  name_zh       String
+  contact_email String?
+  status        EntityStatus @default(ACTIVE)
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+
+  supplier      Supplier      @relation(fields: [supplier_id], references: [id])
+  work_orders   WorkOrder[]
+  metric_values MetricValue[]
+  reports       Report[]
+
+  @@index([supplier_id])
+  @@map("clients")
+}
+
+model User {
+  id           BigInt     @id @default(autoincrement())
+  email        String     @unique
+  password_hash String
+  display_name String
+  locale_pref  Locale     @default(en)
+  status       UserStatus @default(ACTIVE)
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  memberships             Membership[]
+  refresh_tokens          RefreshToken[]
+  created_work_orders     WorkOrder[]        @relation("WorkOrderCreatedBy")
+  work_order_stage_events WorkOrderStageEvent[]
+  entered_metric_values   MetricValue[]      @relation("MetricValueEnteredBy")
+  created_emission_factors EmissionFactor[]  @relation("EmissionFactorCreatedBy")
+  generated_reports       Report[]           @relation("ReportGeneratedBy")
+  reviewed_reports        Report[]           @relation("ReportReviewedBy")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         BigInt    @id @default(autoincrement())
+  user_id    BigInt
+  token_hash String
+  expires_at DateTime
+  revoked_at DateTime?
+  created_at DateTime  @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@map("refresh_tokens")
+}
+
+// One row = one grant of a role over a scope. AUDITOR rows use scope_type=GLOBAL
+// and scope_id=NULL — see TenantScopeGuard in src/common for how this is enforced.
+model Membership {
+  id         BigInt         @id @default(autoincrement())
+  user_id    BigInt
+  role       MembershipRole
+  scope_type ScopeType
+  scope_id   BigInt?
+  created_at DateTime       @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, role, scope_type, scope_id])
+  @@index([scope_type, scope_id])
+  @@map("memberships")
+}
+
+// ---------------------------------------------------------------------------
+// 3b. Work order / WIP flow
+// ---------------------------------------------------------------------------
+
+model Unit {
+  id         BigInt   @id @default(autoincrement())
+  code       String   @unique // KWH, GJ, KG, LITRE, M3, CASE, NO, REAM, KM, HKD, ...
+  name_en    String
+  name_zh    String
+  unit_type  String // ENERGY | MASS | VOLUME | COUNT | CURRENCY | DISTANCE | AREA
+
+  material_types      MaterialType[]
+  metric_definitions  MetricDefinition[]
+  metric_values       MetricValue[]
+
+  @@map("units")
+}
+
+model MaterialType {
+  id               BigInt  @id @default(autoincrement())
+  code             String  @unique
+  name_en          String
+  name_zh          String
+  default_unit_id  BigInt?
+
+  default_unit         Unit?                 @relation(fields: [default_unit_id], references: [id])
+  work_order_materials WorkOrderMaterial[]
+
+  @@map("material_types")
+}
+
+enum DeviceType {
+  WEIGHT_SCALE
+  CV_CAMERA
+}
+
+enum DevicePurpose {
+  INLET
+  OUTLET
+  PROCESS_MONITOR
+}
+
+model Device {
+  id           BigInt        @id @default(autoincrement())
+  facility_id  BigInt
+  device_type  DeviceType
+  device_code  String        @unique
+  purpose      DevicePurpose
+  is_simulated Boolean       @default(true)
+  api_key_hash String
+  status       EntityStatus  @default(ACTIVE)
+  created_at   DateTime      @default(now())
+
+  facility        Facility        @relation(fields: [facility_id], references: [id])
+  weight_readings WeightReading[]
+  cv_readings     CvReading[]
+
+  @@index([facility_id])
+  @@map("devices")
+}
+
+enum WorkOrderStatus {
+  ORDER_RECEIVED
+  PICKUP_SCHEDULED
+  IN_TRANSIT
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+model WorkOrder {
+  id                BigInt          @id @default(autoincrement())
+  facility_id       BigInt
+  client_id         BigInt?
+  wip_no            String          @unique
+  wip_date          DateTime        @db.Date
+  wip_time          DateTime        @db.Time
+  status            WorkOrderStatus @default(ORDER_RECEIVED)
+  created_by_user_id BigInt
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+
+  facility            Facility              @relation(fields: [facility_id], references: [id])
+  client              Client?               @relation(fields: [client_id], references: [id])
+  created_by          User                  @relation("WorkOrderCreatedBy", fields: [created_by_user_id], references: [id])
+  stage_events        WorkOrderStageEvent[]
+  materials           WorkOrderMaterial[]
+  weight_readings     WeightReading[]
+  cv_readings         CvReading[]
+  photos              WorkOrderPhoto[]
+  processed_material  ProcessedMaterial?
+  transport_trips     TransportTrip[]
+  metric_values       MetricValue[]
+
+  @@index([facility_id])
+  @@index([client_id])
+  @@map("work_orders")
+}
+
+model WorkOrderStageEvent {
+  id             BigInt          @id @default(autoincrement())
+  work_order_id  BigInt
+  stage          WorkOrderStatus
+  occurred_at    DateTime        @default(now())
+  actor_user_id  BigInt?
+  note           String?
+
+  work_order WorkOrder @relation(fields: [work_order_id], references: [id])
+  actor      User?     @relation(fields: [actor_user_id], references: [id])
+
+  @@index([work_order_id])
+  @@map("work_order_stage_events")
+}
+
+enum MaterialSource {
+  MANUAL
+  IOT
+  CALCULATED
+}
+
+model WorkOrderMaterial {
+  id               BigInt         @id @default(autoincrement())
+  work_order_id    BigInt
+  material_type_id BigInt
+  weight_kg        Decimal        @db.Decimal(12, 3)
+  product_type     String?
+  recorded_at      DateTime       @default(now())
+  source           MaterialSource @default(MANUAL)
+
+  work_order    WorkOrder    @relation(fields: [work_order_id], references: [id])
+  material_type MaterialType @relation(fields: [material_type_id], references: [id])
+
+  @@index([work_order_id])
+  @@map("work_order_materials")
+}
+
+enum ReadingType {
+  INLET
+  OUTLET
+}
+
+enum ReadingSource {
+  SIMULATED
+  REAL
+}
+
+model WeightReading {
+  id            BigInt        @id @default(autoincrement())
+  reading_uuid  String        @unique @db.Char(36)
+  work_order_id BigInt?
+  device_id     BigInt
+  reading_type  ReadingType
+  weight_kg     Decimal       @db.Decimal(12, 3)
+  reading_at    DateTime
+  source        ReadingSource
+
+  work_order WorkOrder? @relation(fields: [work_order_id], references: [id])
+  device     Device     @relation(fields: [device_id], references: [id])
+
+  @@index([work_order_id])
+  @@index([device_id])
+  @@map("weight_readings")
+}
+
+model CvReading {
+  id                  BigInt        @id @default(autoincrement())
+  reading_uuid        String        @unique @db.Char(36)
+  work_order_id       BigInt?
+  device_id           BigInt
+  object_class        String?
+  confidence          Decimal?      @db.Decimal(4, 3)
+  estimated_weight_kg Decimal?      @db.Decimal(12, 3)
+  captured_at         DateTime
+  source              ReadingSource
+
+  work_order WorkOrder?       @relation(fields: [work_order_id], references: [id])
+  device     Device           @relation(fields: [device_id], references: [id])
+  photos     WorkOrderPhoto[]
+
+  @@index([work_order_id])
+  @@index([device_id])
+  @@map("cv_readings")
+}
+
+model WorkOrderPhoto {
+  id            BigInt    @id @default(autoincrement())
+  work_order_id BigInt
+  cv_reading_id BigInt?
+  storage_key   String
+  caption       String?
+  captured_at   DateTime  @default(now())
+
+  work_order WorkOrder  @relation(fields: [work_order_id], references: [id])
+  cv_reading CvReading? @relation(fields: [cv_reading_id], references: [id])
+
+  @@index([work_order_id])
+  @@map("work_order_photos")
+}
+
+model ProcessedMaterial {
+  id                BigInt   @id @default(autoincrement())
+  work_order_id     BigInt   @unique
+  output_weight_kg  Decimal  @db.Decimal(12, 3)
+  scrap_weight_kg   Decimal  @db.Decimal(12, 3)
+  recorded_at       DateTime @default(now())
+
+  work_order WorkOrder @relation(fields: [work_order_id], references: [id])
+
+  @@map("processed_material")
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  PASSENGER_CAR
+  PRIVATE_VAN
+  PUBLIC_LIGHT_BUS
+  LIGHT_GOODS_VEHICLE
+  HEAVY_GOODS_VEHICLE
+  MEDIUM_GOODS_VEHICLE
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  LPG
+}
+
+model TransportTrip {
+  id                      BigInt      @id @default(autoincrement())
+  work_order_id           BigInt?
+  facility_id             BigInt
+  vehicle_type            VehicleType
+  fuel_type               FuelType
+  distance_km             Decimal?    @db.Decimal(10, 2)
+  fuel_consumption_litres Decimal?    @db.Decimal(10, 2)
+  pickup_location         String?
+  dropoff_location        String?
+  further_destination     String?
+  trip_date               DateTime    @db.Date
+
+  work_order WorkOrder? @relation(fields: [work_order_id], references: [id])
+  facility   Facility   @relation(fields: [facility_id], references: [id])
+
+  @@index([work_order_id])
+  @@index([facility_id])
+  @@map("transport_trips")
+}
+
+// ---------------------------------------------------------------------------
+// 3c. Generic metric-catalog + metric-value model (constrained EAV — see plan §3c
+// for why this beats one column per spreadsheet row)
+// ---------------------------------------------------------------------------
+
+model MetricCategory {
+  id      BigInt @id @default(autoincrement())
+  code    String @unique // COMPLIANCE, ENERGY_ELECTRICITY, ... (the 9 data-collection sections)
+  name_en String
+  name_zh String
+  sort_order Int  @default(0)
+
+  metric_definitions MetricDefinition[]
+
+  @@map("metric_categories")
+}
+
+enum ValueType {
+  NUMERIC
+  TEXT
+  COUNT
+}
+
+enum DerivationFactorCategory {
+  UNIT_CONVERSION
+  EMISSION_FACTOR
+  EQUIVALENCY
+}
+
+model MetricDefinition {
+  id                          BigInt                    @id @default(autoincrement())
+  category_id                 BigInt
+  code                        String                    @unique
+  gri_code                    String?
+  hkex_code                   String?
+  name_en                     String
+  name_zh                     String
+  description_en              String?
+  description_zh              String?
+  value_type                  ValueType
+  default_unit_id             BigInt?
+  is_derived                  Boolean                   @default(false)
+  derivation_of_metric_id     BigInt?
+  derivation_factor_category  DerivationFactorCategory?
+
+  category            MetricCategory              @relation(fields: [category_id], references: [id])
+  default_unit         Unit?                        @relation(fields: [default_unit_id], references: [id])
+  derivation_of        MetricDefinition?            @relation("MetricDerivation", fields: [derivation_of_metric_id], references: [id])
+  derived_metrics       MetricDefinition[]           @relation("MetricDerivation")
+  dimensions            MetricDefinitionDimension[]
+  values                MetricValue[]
+
+  @@index([category_id])
+  @@map("metric_definitions")
+}
+
+model DimensionType {
+  id   BigInt @id @default(autoincrement())
+  code String @unique // FUEL_TYPE, VEHICLE_TYPE, REFRIGERANT_TYPE, WASTE_TYPE, HANDLING_METHOD,
+                       // GENDER, EMPLOYMENT_TYPE, PAPER_SIZE, UTILITY
+
+  values                       DimensionValue[]
+  metric_definition_dimensions MetricDefinitionDimension[]
+  metric_value_dimensions      MetricValueDimension[]
+
+  @@map("dimension_types")
+}
+
+model DimensionValue {
+  id                BigInt @id @default(autoincrement())
+  dimension_type_id BigInt
+  code              String
+  name_en           String
+  name_zh           String
+
+  dimension_type           DimensionType          @relation(fields: [dimension_type_id], references: [id])
+  metric_value_dimensions  MetricValueDimension[]
+
+  @@unique([dimension_type_id, code])
+  @@map("dimension_values")
+}
+
+model MetricDefinitionDimension {
+  id                    BigInt  @id @default(autoincrement())
+  metric_definition_id  BigInt
+  dimension_type_id     BigInt
+  is_required           Boolean @default(false)
+
+  metric_definition MetricDefinition @relation(fields: [metric_definition_id], references: [id])
+  dimension_type    DimensionType    @relation(fields: [dimension_type_id], references: [id])
+
+  @@unique([metric_definition_id, dimension_type_id])
+  @@map("metric_definition_dimensions")
+}
+
+enum ReportingPeriodStatus {
+  DRAFT
+  SUBMITTED
+  AUDITED
+  FINALIZED
+}
+
+model ReportingPeriod {
+  id          BigInt                 @id @default(autoincrement())
+  facility_id BigInt
+  period_code String // e.g. 'FY21/22', 'Q3 2024'
+  start_date  DateTime               @db.Date
+  end_date    DateTime               @db.Date
+  status      ReportingPeriodStatus  @default(DRAFT)
+
+  facility      Facility      @relation(fields: [facility_id], references: [id])
+  metric_values MetricValue[]
+
+  @@unique([facility_id, period_code])
+  @@map("reporting_periods")
+}
+
+enum MetricValueSource {
+  MANUAL
+  SIMULATED_IOT
+  CALCULATED
+  IMPORTED
+}
+
+// Append-only. A correction NEVER updates numeric_value/text_value on an
+// existing row — it inserts a new row with supersedes_id set and flips the
+// old row's is_current to false. This is the audit trail auditors need.
+model MetricValue {
+  id                     BigInt            @id @default(autoincrement())
+  reporting_period_id    BigInt
+  facility_id            BigInt
+  client_id              BigInt?
+  metric_definition_id   BigInt
+  numeric_value          Decimal?          @db.Decimal(18, 4)
+  text_value             String?           @db.Text
+  unit_id                BigInt?
+  source                 MetricValueSource
+  source_work_order_id   BigInt?
+  notes                  String?           @db.Text
+  entered_by_user_id     BigInt
+  entered_at             DateTime          @default(now())
+  is_current             Boolean           @default(true)
+  supersedes_id          BigInt?           @unique
+  correction_reason      String?           @db.Text
+  locale                 Locale?
+
+  reporting_period ReportingPeriod        @relation(fields: [reporting_period_id], references: [id])
+  facility          Facility              @relation(fields: [facility_id], references: [id])
+  client            Client?               @relation(fields: [client_id], references: [id])
+  metric_definition MetricDefinition      @relation(fields: [metric_definition_id], references: [id])
+  unit              Unit?                 @relation(fields: [unit_id], references: [id])
+  source_work_order WorkOrder?            @relation(fields: [source_work_order_id], references: [id])
+  entered_by        User                  @relation("MetricValueEnteredBy", fields: [entered_by_user_id], references: [id])
+  supersedes        MetricValue?          @relation("MetricValueCorrection", fields: [supersedes_id], references: [id])
+  superseded_by      MetricValue?         @relation("MetricValueCorrection")
+  dimensions        MetricValueDimension[]
+
+  @@index([reporting_period_id])
+  @@index([facility_id, metric_definition_id, is_current])
+  @@map("metric_values")
+}
+
+model MetricValueDimension {
+  id                  BigInt @id @default(autoincrement())
+  metric_value_id     BigInt
+  dimension_type_id   BigInt
+  dimension_value_id  BigInt
+
+  metric_value    MetricValue    @relation(fields: [metric_value_id], references: [id])
+  dimension_type  DimensionType  @relation(fields: [dimension_type_id], references: [id])
+  dimension_value DimensionValue @relation(fields: [dimension_value_id], references: [id])
+
+  @@index([metric_value_id])
+  @@map("metric_value_dimensions")
+}
+
+// ---------------------------------------------------------------------------
+// 3d. Versioned, effective-dated emission-factor / tunable-parameter table
+// ---------------------------------------------------------------------------
+
+model ParameterCategory {
+  id   BigInt @id @default(autoincrement())
+  code String @unique // GRID_EMISSION_FACTOR, FUEL_EMISSION_FACTOR, GWP_REFRIGERANT,
+                       // UNIT_CONVERSION, ENVIRONMENTAL_EQUIVALENCY
+
+  emission_factors EmissionFactor[]
+
+  @@map("parameter_categories")
+}
+
+// Writes never mutate factor_value on an existing row: to change a factor,
+// end the old row's effective_to and insert a new row. This is what lets a
+// report generated last year stay reproducible forever (see reports.emission_factor_snapshot).
+model EmissionFactor {
+  id                  BigInt    @id @default(autoincrement())
+  category_id         BigInt
+  code                String // e.g. 'CLP_GRID_EF', 'R134A_GWP', 'DIESEL_TO_GJ', 'PAPER_TREES_SAVED_PER_KG'
+  utility_code        String?
+  fuel_type_code      String?
+  refrigerant_type_code String?
+  vehicle_type_code   String?
+  material_type_code  String?
+  scope_extra         Json?
+  factor_value        Decimal   @db.Decimal(18, 8)
+  factor_unit         String // e.g. 'kgCO2e/kWh', 'GJ/L', 'trees/kg'
+  effective_from      DateTime  @db.Date
+  effective_to        DateTime? @db.Date
+  source_reference    String?   @db.Text
+  created_by_user_id  BigInt
+  created_at          DateTime  @default(now())
+  is_active           Boolean   @default(true)
+
+  category   ParameterCategory @relation(fields: [category_id], references: [id])
+  created_by User              @relation("EmissionFactorCreatedBy", fields: [created_by_user_id], references: [id])
+
+  @@index([category_id, code, effective_from])
+  @@map("emission_factors")
+}
+
+// ---------------------------------------------------------------------------
+// 3e. Report entities
+// ---------------------------------------------------------------------------
+
+model ReportTemplate {
+  id              BigInt  @id @default(autoincrement())
+  code            String  @unique // HKEX_ESG_GUIDE, GRI_STANDARDS, HK_CARBON_AUDIT
+  name_en         String
+  name_zh         String
+  description_en  String?
+  description_zh  String?
+  framework       String?
+  section_scope   Json // list of metric_categories.code included in this template
+
+  reports Report[]
+
+  @@map("report_templates")
+}
+
+enum ReportAudience {
+  OFFICIAL
+  CLIENT_SELF_SERVICE
+}
+
+enum ReportGenerationStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum ReportReviewStatus {
+  DRAFT
+  PENDING_REVIEW
+  FINALIZED
+  PUBLISHED
+}
+
+model Report {
+  id                        BigInt                   @id @default(autoincrement())
+  facility_id               BigInt
+  client_id                 BigInt?
+  report_template_id        BigInt
+  audience                  ReportAudience
+  period_start               DateTime                @db.Date
+  period_end                 DateTime                @db.Date
+  generation_status          ReportGenerationStatus   @default(QUEUED)
+  review_status               ReportReviewStatus?
+  generated_by_user_id        BigInt
+  generated_at                 DateTime                @default(now())
+  reviewed_by_user_id          BigInt?
+  reviewed_at                   DateTime?
+  finalized_at                   DateTime?
+  pdf_storage_key                 String?
+  file_size_bytes                  Int?
+  emission_factor_snapshot          Json?
+
+  facility        Facility       @relation(fields: [facility_id], references: [id])
+  client          Client?        @relation(fields: [client_id], references: [id])
+  report_template ReportTemplate @relation(fields: [report_template_id], references: [id])
+  generated_by    User           @relation("ReportGeneratedBy", fields: [generated_by_user_id], references: [id])
+  reviewed_by     User?          @relation("ReportReviewedBy", fields: [reviewed_by_user_id], references: [id])
+
+  @@index([facility_id])
+  @@index([client_id])
+  @@map("reports")
+}

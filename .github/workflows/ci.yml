@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      # Includes packages/ui/src/tokens.contrast.test.ts — the WCAG AA
+      # contrast gate (plan §8) runs here, not as a separate job, so a
+      # non-compliant token change fails CI the same way a broken unit
+      # test would.
+      - run: npm run test
+
+      - run: npm run build
+
+  # Prisma schema validation needs a real MySQL to connect to for
+  # `migrate diff`/`validate` against actual DDL — kept as its own job so
+  # the fast lint/typecheck/test/build job above isn't gated on a database
+  # service spinning up.
+  prisma-validate:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_password
+          MYSQL_DATABASE: esg_platform_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Prisma validate + migrate deploy against a throwaway DB
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: mysql://root:ci_root_password@localhost:3306/esg_platform_ci
+        run: |
+          npx prisma validate
+          npx prisma migrate deploy
+
+  # Loads the real built pages (public + authenticated, via real login
+  # tokens against a running backend) in headless Chromium and runs
+  # axe-core against each — the CI-enforced half of the WCAG AA+
+  # verification pipeline (plan §8). Separate job from the fast one above
+  # since it needs a live MySQL + backend process, not just a build.
+  accessibility:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_password
+          MYSQL_DATABASE: esg_platform_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: mysql://root:ci_root_password@localhost:3306/esg_platform_ci
+      JWT_ACCESS_SECRET: ci_access_secret
+      JWT_REFRESH_SECRET: ci_refresh_secret
+      PORT: 3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build:shared
+      - name: Migrate + seed a throwaway database
+        working-directory: apps/backend
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+          npx ts-node --project prisma/tsconfig.seed.json prisma/seed.ts
+      - name: Start backend
+        working-directory: apps/backend
+        run: |
+          npm run build
+          nohup node dist/main.js > backend.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/health && break || sleep 1; done
+          curl -sf http://localhost:3000/health || (echo "backend did not become healthy" && cat backend.log && exit 1)
+      - run: npm run build -w @esg/ops-portal -w @esg/client-portal
+      - run: npm run test:a11y
+      - name: Show backend log on failure
+        if: failure()
+        run: cat apps/backend/backend.log || true

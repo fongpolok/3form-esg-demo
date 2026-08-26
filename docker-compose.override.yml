@@ -1,0 +1,44 @@
+# Auto-merged by `docker compose up` in local dev (not in CI/prod, which
+# should pass `-f docker-compose.yml` explicitly to skip this file).
+# Adds bind mounts + dev-server commands for hot reload instead of the
+# baked-in production builds from docker-compose.yml's Dockerfiles.
+services:
+  # Both services target the Dockerfile's "build" stage, not the default
+  # "runtime" stage — runtime is deliberately stripped down to dist/ +
+  # prod node_modules for a small final image, but `npm run dev` (nest
+  # start --watch / ts-node-dev) needs the full TypeScript source, tsconfig
+  # chain, and devDependencies that only the build stage has.
+  backend:
+    build:
+      target: build
+    # The "build" stage's WORKDIR is /workspace (it only becomes
+    # /workspace/apps/backend in the later "runtime" stage), so this must be
+    # set explicitly or prisma/npm run relative to the wrong directory.
+    working_dir: /workspace/apps/backend
+    # Rebuilds shared-types/shared-validation on every start: the
+    # ./packages bind mount below overwrites the image's baked dist/ for
+    # those two with whatever's on the host, which may be stale or absent
+    # entirely on a fresh clone — this makes dev startup self-healing
+    # instead of depending on the host having already run `npm run build`.
+    command: sh -c "npm run build -w @esg/shared-types -w @esg/shared-validation --prefix /workspace && npx prisma generate && npx prisma migrate deploy && npm run dev"
+    volumes:
+      - ./apps/backend/src:/workspace/apps/backend/src
+      - ./apps/backend/prisma:/workspace/apps/backend/prisma
+      - ./packages:/workspace/packages
+    environment:
+      NODE_ENV: development
+
+  simulator:
+    build:
+      target: build
+    working_dir: /workspace/apps/simulator
+    command: npm run dev
+    volumes:
+      - ./apps/simulator/src:/workspace/apps/simulator/src
+
+  # In dev, run the two Vite dev servers directly on the host
+  # (`npm run dev:ops-portal` / `npm run dev:client-portal`) for fast HMR —
+  # the frontend container here still works for a closer-to-prod smoke test.
+  frontend:
+    ports:
+      - '8080:80'

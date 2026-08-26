@@ -1,0 +1,24 @@
+{
+  "appName": "ESG審核平台",
+  "nav": {
+    "dashboard": "儀表板",
+    "workOrders": "工作單",
+    "dataCollection": "數據收集",
+    "reports": "報告",
+    "settings": "設定"
+  },
+  "auth": {
+    "supplierLogin": "供應商登入",
+    "clientLogin": "客戶登入",
+    "email": "企業電郵地址",
+    "password": "密碼",
+    "forgotPassword": "忘記密碼？",
+    "signIn": "登入"
+  },
+  "errors": {
+    "AUTH.INVALID_CREDENTIALS": "您輸入的電郵或密碼不正確。",
+    "AUTH.INVALID_REFRESH_TOKEN": "您的登入時效已過，請重新登入。",
+    "VALIDATION.FAILED": "請檢查標示的欄位後再試一次。",
+    "ORG.OUTSIDE_SCOPE": "您沒有權限存取該機構。"
+  }
+}

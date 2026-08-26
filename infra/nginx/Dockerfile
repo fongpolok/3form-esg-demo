@@ -1,0 +1,35 @@
+# Builds both SPAs and serves them from one nginx container, path-routed
+# (plan §10) since no domain/subdomain strategy is chosen yet for the PoC.
+FROM node:20-slim AS deps
+WORKDIR /workspace
+COPY package.json package-lock.json* ./
+COPY packages/i18n/package.json packages/i18n/
+COPY packages/shared-types/package.json packages/shared-types/
+COPY packages/shared-validation/package.json packages/shared-validation/
+COPY packages/ui/package.json packages/ui/
+COPY apps/ops-portal/package.json apps/ops-portal/
+COPY apps/client-portal/package.json apps/client-portal/
+RUN npm install \
+    --workspace=@esg/ops-portal --workspace=@esg/client-portal \
+    --workspace=@esg/i18n --workspace=@esg/shared-types \
+    --workspace=@esg/shared-validation --workspace=@esg/ui \
+    --include-workspace-root
+
+FROM deps AS build
+COPY tsconfig.base.json ./
+COPY packages packages
+COPY apps/ops-portal apps/ops-portal
+COPY apps/client-portal apps/client-portal
+# shared-types/shared-validation ship compiled JS, not raw .ts (see
+# apps/backend/Dockerfile's comment) — Vite can bundle raw TS fine, but
+# these two packages' package.json now points "main"/"types" at dist/, so
+# it must exist before Vite resolves the import either way.
+RUN npm run build --workspace=@esg/shared-types --workspace=@esg/shared-validation
+RUN npm run build --workspace=@esg/ops-portal
+RUN npm run build --workspace=@esg/client-portal
+
+FROM nginx:1.27-alpine AS runtime
+COPY infra/nginx/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /workspace/apps/ops-portal/dist /usr/share/nginx/html/ops-portal
+COPY --from=build /workspace/apps/client-portal/dist /usr/share/nginx/html/client-portal
+EXPOSE 80
