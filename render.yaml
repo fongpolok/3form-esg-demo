@@ -1,5 +1,10 @@
 services:
-  - type: pserv
+  # Render's free plan doesn't support Private Services (type: pserv) at
+  # all — confirmed via a failed sync ("service type is not available for
+  # this plan"), not a YAML issue. Every service here is `web` instead;
+  # MySQL and the simulator don't need public exposure, but this is the
+  # only way to get them running on the free plan.
+  - type: web
     name: esg-mysql
     runtime: image
     image:
@@ -25,12 +30,12 @@ services:
     envVars:
       - key: DB_HOST
         fromService:
-          type: pserv
+          type: web
           name: esg-mysql
           property: host
       - key: DB_PASSWORD
         fromService:
-          type: pserv
+          type: web
           name: esg-mysql
           envVarKey: MYSQL_PASSWORD
       - key: JWT_ACCESS_SECRET
@@ -48,7 +53,7 @@ services:
       - key: SIMULATOR_DEVICE_API_KEY
         generateValue: true
 
-  - type: pserv
+  - type: web
     name: esg-simulator
     runtime: docker
     dockerfilePath: ./apps/simulator/Dockerfile

@@ -1,4 +1,13 @@
+import { createServer } from 'node:http';
 import { MockCvCameraSource, MockWeightScaleSource, type IDeviceSource } from './device-source';
+
+// The simulator is otherwise a pure outbound loop (posts readings, listens
+// for nothing) — Render's free plan only runs `type: web` services, which
+// require *something* answering on $PORT to be considered healthy. This
+// exists for that health check alone; nothing calls into it.
+if (process.env.PORT) {
+  createServer((_req, res) => res.writeHead(200).end('ok')).listen(Number(process.env.PORT));
+}
 
 const BACKEND_URL = process.env.SIMULATOR_BACKEND_URL ?? 'http://localhost:3000';
 const INTERVAL_MS = Number(process.env.SIMULATOR_INTERVAL_MS ?? 15000);
