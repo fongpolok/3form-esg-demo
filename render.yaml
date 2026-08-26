@@ -1,0 +1,75 @@
+services:
+  - type: pserv
+    name: esg-mysql
+    runtime: image
+    image:
+      url: docker.io/library/mysql:8.0
+    plan: free
+    dockerCommand: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    envVars:
+      - key: MYSQL_ROOT_PASSWORD
+        generateValue: true
+      - key: MYSQL_DATABASE
+        value: esg_platform
+      - key: MYSQL_USER
+        value: esg_app
+      - key: MYSQL_PASSWORD
+        generateValue: true
+
+  - type: web
+    name: esg-backend
+    runtime: docker
+    dockerfilePath: ./apps/backend/Dockerfile.render
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: DB_HOST
+        fromService:
+          type: pserv
+          name: esg-mysql
+          property: host
+      - key: DB_PASSWORD
+        fromService:
+          type: pserv
+          name: esg-mysql
+          envVarKey: MYSQL_PASSWORD
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL
+        value: 30d
+      - key: STORAGE_DRIVER
+        value: local
+      - key: PUBLIC_BASE_URL
+        value: https://esg-backend.onrender.com
+      - key: SIMULATOR_DEVICE_API_KEY
+        generateValue: true
+
+  - type: pserv
+    name: esg-simulator
+    runtime: docker
+    dockerfilePath: ./apps/simulator/Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: SIMULATOR_BACKEND_URL
+        value: https://esg-backend.onrender.com
+      - key: SIMULATOR_DEVICE_API_KEY
+        fromService:
+          type: web
+          name: esg-backend
+          envVarKey: SIMULATOR_DEVICE_API_KEY
+      - key: SIMULATOR_INTERVAL_MS
+        value: 15000
+      - key: SIMULATOR_ENABLED
+        value: true
+
+  - type: web
+    name: esg-frontend
+    runtime: docker
+    dockerfilePath: ./infra/nginx/Dockerfile.render
+    dockerContext: .
+    plan: free
