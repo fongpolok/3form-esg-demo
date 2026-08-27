@@ -8,7 +8,26 @@ set -e
 # port match what render.yaml's esg-mysql service is seeded with.
 export DATABASE_URL="mysql://esg_app:${DB_PASSWORD}@${DB_HOST}:3306/esg_platform"
 
-npx prisma migrate deploy
+# Render deploys each Blueprint service independently — there's no
+# depends_on/condition:service_healthy the way docker-compose.yml has
+# locally, and esg-mysql's own first boot (initializing a fresh data
+# directory, then Render's HTTP-port-scan shim, then mysqld itself) can
+# take longer than esg-backend's container needs to reach this line. Under
+# `set -e`, a `migrate deploy` that fails once because MySQL isn't up yet
+# would exit this whole script immediately — so retry instead of failing
+# fast; `migrate deploy` is idempotent, safe to call repeatedly. Capped at
+# ~4 minutes to stay inside Render's own ~5 minute port-scan timeout.
+attempt=1
+max_attempts=24
+until npx prisma migrate deploy; do
+  if [ "$attempt" -ge "$max_attempts" ]; then
+    echo "prisma migrate deploy still failing after $attempt attempts — giving up."
+    exit 1
+  fi
+  echo "prisma migrate deploy failed (attempt $attempt/$max_attempts) — MySQL probably isn't ready yet. Retrying in 10s..."
+  attempt=$((attempt + 1))
+  sleep 10
+done
 
 # seed.js uses plain .create() throughout (not upsert), so it isn't safe to
 # rerun — this only fires once, on the first boot against an empty
