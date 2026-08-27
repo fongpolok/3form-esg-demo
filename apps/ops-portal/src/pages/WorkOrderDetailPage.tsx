@@ -9,6 +9,7 @@ import {
   type AddWorkOrderMaterialInput,
   type RecordProcessedMaterialInput,
 } from '@esg/shared-validation';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '@esg/ui';
 import {
   addWorkOrderMaterial,
   getWorkOrder,
@@ -71,137 +72,109 @@ export function WorkOrderDetailPage() {
   const nextStage = !isTerminal ? FORWARD_STAGES[currentStageIndex + 1] : undefined;
 
   return (
-    <div style={{ maxWidth: 760 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-        <h1 style={{ margin: 0 }}>#{workOrder.wipNo}</h1>
+    <div className="max-w-3xl">
+      <div className="mb-1 flex items-center gap-3">
+        <h1 className="text-[22px] font-bold text-[#1e293b]">#{workOrder.wipNo}</h1>
         <StatusBadge status={workOrder.status} />
       </div>
-      <p style={{ color: 'var(--color-text-muted)' }}>
+      <p className="mb-6 text-sm text-[#627288]">
         {new Date(workOrder.wipDate).toLocaleDateString('en-HK')} · {workOrder.clientName ?? 'No client on record'}
       </p>
 
       {!isTerminal && nextStage && (
-        <button
-          type="button"
-          onClick={() => statusMutation.mutate(nextStage)}
-          disabled={statusMutation.isPending}
-          style={{
-            background: 'var(--color-action-green)',
-            color: 'var(--color-text-on-dark)',
-            border: 'none',
-            borderRadius: 6,
-            padding: '0.6rem 1.2rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            marginBottom: '1.5rem',
-          }}
-        >
+        <Button onClick={() => statusMutation.mutate(nextStage)} disabled={statusMutation.isPending} className="mb-6">
           Advance to {nextStage.replace(/_/g, ' ').toLowerCase()}
-        </button>
+        </Button>
       )}
 
-      <section style={{ marginBottom: '2rem' }}>
-        <h2>Stage History</h2>
-        <ol style={{ listStyle: 'none', padding: 0 }}>
-          {workOrder.stageEvents.map((event) => (
-            <li key={event.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--color-border-placeholder)' }}>
-              <StatusBadge status={event.stage} /> <span style={{ marginLeft: '0.75rem', color: 'var(--color-text-muted)' }}>
-                {new Date(event.occurredAt).toLocaleString('en-HK')}
-              </span>
-              {event.note && <div style={{ marginTop: '0.25rem' }}>{event.note}</div>}
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section style={{ marginBottom: '2rem' }}>
-        <h2>Received Materials</h2>
-        {workOrder.materials.length === 0 && <p>No materials recorded yet.</p>}
-        {workOrder.materials.length > 0 && (
-          <ul style={{ paddingLeft: '1.2rem' }}>
-            {workOrder.materials.map((m) => (
-              <li key={m.id}>
-                {m.materialType.nameEn} — {Number(m.weightKg).toLocaleString('en-HK')} kg
-                {m.productType ? ` (${m.productType})` : ''}
+      <Card className="mb-5 border-none shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Stage History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="flex flex-col gap-0">
+            {workOrder.stageEvents.map((event) => (
+              <li key={event.id} className="flex items-center gap-3 border-t border-[#f0f0f0] py-2.5 first:border-t-0">
+                <StatusBadge status={event.stage} />
+                <span className="text-sm text-[#627288]">{new Date(event.occurredAt).toLocaleString('en-HK')}</span>
+                {event.note && <span className="text-sm">{event.note}</span>}
               </li>
             ))}
-          </ul>
-        )}
+          </ol>
+        </CardContent>
+      </Card>
 
-        {!isTerminal && (
-          <form
-            onSubmit={materialForm.handleSubmit((input) => materialMutation.mutate(input))}
-            noValidate
-            style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', marginTop: '1rem' }}
-          >
-            <div>
-              <label htmlFor="materialTypeId" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>
-                Material Type
-              </label>
-              <select
-                id="materialTypeId"
-                {...materialForm.register('materialTypeId')}
-                style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid var(--color-border-placeholder)' }}
-              >
-                <option value="">Select…</option>
-                {materialTypesQuery.data?.map((mt) => (
-                  <option key={mt.id} value={mt.id}>
-                    {mt.nameEn}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="weightKg" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>
-                Weight (kg)
-              </label>
-              <input
-                id="weightKg"
-                type="number"
-                step="0.001"
-                {...materialForm.register('weightKg')}
-                style={{
-                  padding: '0.5rem',
-                  borderRadius: 6,
-                  border: '1px solid var(--color-border-placeholder)',
-                  width: 140,
-                }}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={materialMutation.isPending}
-              style={{
-                background: 'var(--color-navy-800)',
-                color: 'var(--color-text-on-dark)',
-                border: 'none',
-                borderRadius: 6,
-                padding: '0.55rem 1rem',
-                cursor: 'pointer',
-              }}
+      <Card className="mb-5 border-none shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Received Materials</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {workOrder.materials.length === 0 && <p className="text-sm text-[#627288]">No materials recorded yet.</p>}
+          {workOrder.materials.length > 0 && (
+            <ul className="mb-4 list-disc pl-5 text-sm">
+              {workOrder.materials.map((m) => (
+                <li key={m.id}>
+                  {m.materialType.nameEn} — {Number(m.weightKg).toLocaleString('en-HK')} kg
+                  {m.productType ? ` (${m.productType})` : ''}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {!isTerminal && (
+            <form
+              onSubmit={materialForm.handleSubmit((input) => materialMutation.mutate(input))}
+              noValidate
+              className="flex flex-wrap items-end gap-3"
             >
-              Add Material
-            </button>
-          </form>
-        )}
-      </section>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="materialTypeId" className="text-xs">
+                  Material Type
+                </Label>
+                <select
+                  id="materialTypeId"
+                  {...materialForm.register('materialTypeId')}
+                  className="rounded-md border border-[#d1d6e0] px-3 py-2 text-sm"
+                >
+                  <option value="">Select…</option>
+                  {materialTypesQuery.data?.map((mt) => (
+                    <option key={mt.id} value={mt.id}>
+                      {mt.nameEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="weightKg" className="text-xs">
+                  Weight (kg)
+                </Label>
+                <Input id="weightKg" type="number" step="0.001" {...materialForm.register('weightKg')} className="w-36" />
+              </div>
+              <Button type="submit" variant="secondary" disabled={materialMutation.isPending}>
+                Add Material
+              </Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
 
-      <section>
-        <h2>Processed Material (WIP Completion)</h2>
-        {workOrder.processedMaterial ? (
-          <p>
-            Output: {Number(workOrder.processedMaterial.outputWeightKg).toLocaleString('en-HK')} kg · Scrap:{' '}
-            {Number(workOrder.processedMaterial.scrapWeightKg).toLocaleString('en-HK')} kg
-          </p>
-        ) : isTerminal ? (
-          <p>This work order was cancelled before processing completed.</p>
-        ) : (
-          <ProcessedMaterialForm
-            onSubmit={(input) => processedMutation.mutate(input)}
-            isPending={processedMutation.isPending}
-          />
-        )}
-      </section>
+      <Card className="border-none shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Processed Material (WIP Completion)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {workOrder.processedMaterial ? (
+            <p className="text-sm">
+              Output: {Number(workOrder.processedMaterial.outputWeightKg).toLocaleString('en-HK')} kg · Scrap:{' '}
+              {Number(workOrder.processedMaterial.scrapWeightKg).toLocaleString('en-HK')} kg
+            </p>
+          ) : isTerminal ? (
+            <p className="text-sm text-[#627288]">This work order was cancelled before processing completed.</p>
+          ) : (
+            <ProcessedMaterialForm onSubmit={(input) => processedMutation.mutate(input)} isPending={processedMutation.isPending} />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -217,46 +190,22 @@ function ProcessedMaterialForm({
     resolver: zodResolver(recordProcessedMaterialSchema),
   });
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-      <div>
-        <label htmlFor="outputWeightKg" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="outputWeightKg" className="text-xs">
           Output Weight (kg)
-        </label>
-        <input
-          id="outputWeightKg"
-          type="number"
-          step="0.001"
-          {...register('outputWeightKg')}
-          style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid var(--color-border-placeholder)', width: 160 }}
-        />
+        </Label>
+        <Input id="outputWeightKg" type="number" step="0.001" {...register('outputWeightKg')} className="w-40" />
       </div>
-      <div>
-        <label htmlFor="scrapWeightKg" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="scrapWeightKg" className="text-xs">
           Scrap Weight (kg)
-        </label>
-        <input
-          id="scrapWeightKg"
-          type="number"
-          step="0.001"
-          {...register('scrapWeightKg')}
-          style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid var(--color-border-placeholder)', width: 160 }}
-        />
+        </Label>
+        <Input id="scrapWeightKg" type="number" step="0.001" {...register('scrapWeightKg')} className="w-40" />
       </div>
-      <button
-        type="submit"
-        disabled={isPending}
-        style={{
-          background: 'var(--color-action-green)',
-          color: 'var(--color-text-on-dark)',
-          border: 'none',
-          borderRadius: 6,
-          padding: '0.55rem 1.2rem',
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}
-      >
+      <Button type="submit" disabled={isPending}>
         Complete Work Order
-      </button>
+      </Button>
     </form>
   );
 }

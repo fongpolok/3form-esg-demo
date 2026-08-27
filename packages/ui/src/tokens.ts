@@ -35,6 +35,14 @@ export const text = {
   // token appears on (surface.page and surface.card); visually
   // indistinguishable from the original at a glance.
   muted: '#627288', // was #64748b in the Figma file
+
+  // ISSUE 3 (found by the automated axe-core pass, not the original Figma
+  // audit): inactive sidebar nav-link text used the same #64748b directly
+  // on the navy sidebar (bg.navy950/800) — 3.81:1 there, since a muted
+  // gray tuned for light surfaces isn't automatically safe on a dark one.
+  // This is that color's dark-background counterpart, lightened until
+  // it clears 4.5:1 against navy950.
+  mutedOnDark: '#748297',
 } as const;
 
 // Decorative use only: chart bars/segments, legend swatches, small status
@@ -82,13 +90,15 @@ export const fontWeight = {
   black: 900,
 } as const;
 
-// Inter covers the Latin weight scale used across the Figma file (400-900).
-// Noto Sans HK is the Traditional Chinese companion — chosen specifically so
-// its weight axis lines up with Inter's, since the UI switches between the
-// two per plan §9 (i18n) rather than mixing them within one string.
+// Geist (headings) + Archivo (body/UI) are the actual fonts used across the
+// Figma file's generated-code export — corrected here from an earlier
+// Inter-based guess made before that export was available. Noto Sans HK is
+// the Traditional Chinese companion, used via :lang(zh-HK) rather than
+// mixed into the Latin stack, per plan §9.
 export const fontFamily = {
-  latin: "'Inter', system-ui, sans-serif",
-  zhHK: "'Noto Sans HK', 'Inter', system-ui, sans-serif",
+  latin: "'Archivo', system-ui, sans-serif",
+  heading: "'Geist', 'Archivo', system-ui, sans-serif",
+  zhHK: "'Noto Sans HK', 'Archivo', system-ui, sans-serif",
 } as const;
 
 export const tokens = { brand, surface, border, text, accent, action, status, fontWeight, fontFamily };

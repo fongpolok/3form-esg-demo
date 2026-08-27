@@ -131,6 +131,10 @@ async function main() {
         console.log(`✗ ${check.app}/${check.path || '(dashboard)'} — ${violations.length} violation(s):`);
         for (const v of violations) {
           console.log(`    [${v.impact}] ${v.id}: ${v.help} (${v.nodes.length} node(s)) — ${v.helpUrl}`);
+          for (const node of v.nodes) {
+            console.log(`      selector: ${node.target.join(' ')}`);
+            console.log(`        ${node.failureSummary?.replace(/\n/g, ' ')}`);
+          }
         }
       }
     }

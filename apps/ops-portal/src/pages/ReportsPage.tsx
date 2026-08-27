@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Download } from 'lucide-react';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@esg/ui';
 import { finalizeReport, generateReport, getReportDownloadUrl, listReportTemplates, listReports } from '../api/reports';
 import { useAuth } from '../auth/AuthContext';
 
@@ -38,92 +40,112 @@ export function ReportsPage() {
   }
 
   return (
-    <div style={{ maxWidth: 900 }}>
-      <h1>ESG Reports</h1>
-      <p style={{ color: 'var(--color-text-muted)' }}>Corporate Compliance &amp; Disclosure Engine</p>
+    <div className="max-w-4xl">
+      <h1 className="text-[22px] font-bold text-[#1e293b]">ESG Reports</h1>
+      <p className="mb-6 text-sm text-[#627288]">Corporate Compliance &amp; Disclosure Engine</p>
 
       {isAuditor && (
-        <section style={{ background: 'var(--color-surface-card)', padding: '1.25rem', borderRadius: 8, marginBottom: '1.5rem' }}>
-          <h2 style={{ marginTop: 0 }}>Generate New Report</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              generateMutation.mutate();
-            }}
-            style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}
-          >
-            <div>
-              <label htmlFor="template" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>Report Type</label>
-              <select id="template" value={templateId} onChange={(e) => setTemplateId(e.target.value)} required style={{ padding: '0.5rem' }}>
-                <option value="">Select…</option>
-                {templatesQuery.data?.map((t) => (
-                  <option key={t.id} value={t.id}>{t.nameEn}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="pstart" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>Period Start</label>
-              <input id="pstart" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} required style={{ padding: '0.5rem' }} />
-            </div>
-            <div>
-              <label htmlFor="pend" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>Period End</label>
-              <input id="pend" type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required style={{ padding: '0.5rem' }} />
-            </div>
-            <button
-              type="submit"
-              disabled={generateMutation.isPending}
-              style={{ padding: '0.6rem 1.2rem', borderRadius: 6, background: 'var(--color-action-green)', color: 'var(--color-text-on-dark)', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+        <Card className="mb-6 border-none shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base">Generate New Report</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                generateMutation.mutate();
+              }}
+              className="flex flex-wrap items-end gap-4"
             >
-              {generateMutation.isPending ? 'Generating…' : 'Generate ESG Report'}
-            </button>
-          </form>
-          {generateMutation.isError && (
-            <p role="alert" style={{ color: 'var(--color-status-danger-fg)' }}>Could not generate the report — check the period and try again.</p>
-          )}
-        </section>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="template">Report Type</Label>
+                <select id="template" value={templateId} onChange={(e) => setTemplateId(e.target.value)} required className="rounded-md border border-[#d1d6e0] px-3 py-2 text-sm">
+                  <option value="">Select…</option>
+                  {templatesQuery.data?.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nameEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="pstart">Period Start</Label>
+                <Input id="pstart" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} required />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="pend">Period End</Label>
+                <Input id="pend" type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required />
+              </div>
+              <Button type="submit" disabled={generateMutation.isPending}>
+                {generateMutation.isPending ? 'Generating…' : 'Generate ESG Report'}
+              </Button>
+              <span className="text-xs text-[#627288]">Est. ~30 seconds</span>
+            </form>
+            {generateMutation.isError && (
+              <p role="alert" className="mt-2 text-sm text-[var(--color-status-danger-fg)]">
+                Could not generate the report — check the period and try again.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      <section>
-        <h2>Generated Reports History</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--color-border-placeholder)' }}>
-              <th scope="col" style={{ padding: '0.6rem' }}>Type</th>
-              <th scope="col" style={{ padding: '0.6rem' }}>Period</th>
-              <th scope="col" style={{ padding: '0.6rem' }}>Status</th>
-              <th scope="col" style={{ padding: '0.6rem' }}>Generated</th>
-              <th scope="col" style={{ padding: '0.6rem' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reportsQuery.data?.map((r) => (
-              <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border-placeholder)' }}>
-                <td style={{ padding: '0.6rem' }}>{r.audience === 'OFFICIAL' ? r.templateNameEn : `${r.templateNameEn} (Client)`}</td>
-                <td style={{ padding: '0.6rem' }}>
-                  {new Date(r.periodStart).toLocaleDateString('en-HK')} – {new Date(r.periodEnd).toLocaleDateString('en-HK')}
-                </td>
-                <td style={{ padding: '0.6rem' }}>
-                  {STATUS_LABEL[r.generationStatus] ?? r.generationStatus}
-                  {r.reviewStatus ? ` / ${r.reviewStatus}` : ''}
-                </td>
-                <td style={{ padding: '0.6rem' }}>{new Date(r.generatedAt).toLocaleString('en-HK')}</td>
-                <td style={{ padding: '0.6rem', display: 'flex', gap: '0.5rem' }}>
-                  {r.generationStatus === 'READY' && (
-                    <button type="button" onClick={() => download(r.id)} style={{ cursor: 'pointer' }}>Download</button>
-                  )}
-                  {isAuditor && r.audience === 'OFFICIAL' && r.reviewStatus === 'DRAFT' && (
-                    <button type="button" onClick={() => finalizeMutation.mutate(r.id)} disabled={finalizeMutation.isPending} style={{ cursor: 'pointer' }}>
-                      Finalize &amp; Publish
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {reportsQuery.data?.length === 0 && <p>No reports generated yet.</p>}
-      </section>
-      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '1rem' }}>
+      <Card className="border-none shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Generated Reports History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Wide content must scroll inside its own container, not clip
+              against the Card — the same fix WorkOrdersListPage already
+              has; this table needed it too (found by actually looking at
+              a screenshot, not by lint/typecheck, which can't catch this). */}
+          <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Period</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Generated</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reportsQuery.data?.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.audience === 'OFFICIAL' ? r.templateNameEn : `${r.templateNameEn} (Client)`}</TableCell>
+                  <TableCell>
+                    {new Date(r.periodStart).toLocaleDateString('en-HK')} – {new Date(r.periodEnd).toLocaleDateString('en-HK')}
+                  </TableCell>
+                  <TableCell>
+                    {STATUS_LABEL[r.generationStatus] ?? r.generationStatus}
+                    {r.reviewStatus ? ` / ${r.reviewStatus}` : ''}
+                  </TableCell>
+                  <TableCell>{new Date(r.generatedAt).toLocaleString('en-HK')}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      {r.generationStatus === 'READY' && (
+                        <Button type="button" size="sm" variant="outline" onClick={() => download(r.id)} className="gap-1.5">
+                          <Download className="size-3.5" aria-hidden="true" />
+                          Download
+                        </Button>
+                      )}
+                      {isAuditor && r.audience === 'OFFICIAL' && r.reviewStatus === 'DRAFT' && (
+                        <Button type="button" size="sm" onClick={() => finalizeMutation.mutate(r.id)} disabled={finalizeMutation.isPending}>
+                          Finalize &amp; Publish
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          </div>
+          {reportsQuery.data?.length === 0 && <p className="py-4 text-sm text-[#627288]">No reports generated yet.</p>}
+        </CardContent>
+      </Card>
+      <p className="mt-4 text-xs text-[#627288]">
         * Reports automatically align with the HKEX ESG Reporting Guide and GRI Standards framework.
       </p>
     </div>

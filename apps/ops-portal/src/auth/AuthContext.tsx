@@ -38,6 +38,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(input: LoginInput) {
     const response = await loginRequest(input);
+    // Mirrors client-portal's symmetric guard: a CLIENT_USER account can
+    // authenticate here (the backend doesn't gate login by which app asked),
+    // but nothing in this portal accounts for that scope, so redirect them
+    // to the app that does rather than show a half-broken staff view.
+    if (!response.user.memberships.some((m) => m.role !== 'CLIENT_USER')) {
+      throw new Error('NOT_A_STAFF_ACCOUNT');
+    }
     setStoredToken(response.accessToken);
     setUser(response.user);
     setStatus('authenticated');

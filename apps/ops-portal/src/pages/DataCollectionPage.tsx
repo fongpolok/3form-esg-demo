@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Button,
+  Input,
+  Label,
+} from '@esg/ui';
 import {
   createReportingPeriod,
   listCategories,
@@ -11,10 +21,6 @@ import {
   type MetricDefinitionDto,
 } from '../api/esg-metrics';
 
-// One <details> per category = the 9-accordion-section pattern from the
-// data-collection Figma screen, using the browser's native disclosure
-// widget — keyboard-operable and screen-reader-announced with zero extra
-// ARIA wiring needed, unlike a hand-rolled accordion.
 export function DataCollectionPage() {
   const queryClient = useQueryClient();
   const [periodId, setPeriodId] = useState<string>('');
@@ -31,8 +37,6 @@ export function DataCollectionPage() {
 
   const effectivePeriodId = periodId || periodsQuery.data?.[0]?.id || '';
 
-  // Defaults to the most recent period once periods load, without forcing
-  // the user to pick one for the common case.
   useEffect(() => {
     if (!periodId && periodsQuery.data?.[0]?.id) {
       setPeriodId(periodsQuery.data[0].id);
@@ -49,26 +53,25 @@ export function DataCollectionPage() {
   });
 
   const valuesByDefinitionCode = new Map((valuesQuery.data ?? []).map((v) => [v.metricDefinitionCode, v]));
+  const categoriesWithData = categoriesQuery.data?.filter((c) => c.metricDefinitions.length > 0) ?? [];
 
   return (
-    <div style={{ maxWidth: 960 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
+    <div className="max-w-4xl">
+      <div className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <h1 style={{ margin: 0 }}>Input ESG Metrics</h1>
-          <p style={{ color: 'var(--color-text-muted)', margin: '0.25rem 0 0' }}>
-            Ensure all records match verified utility bills &amp; logs.
-          </p>
+          <h1 className="text-[22px] font-bold text-[#1e293b]">Input ESG Metrics</h1>
+          <p className="text-sm text-[#627288]">Ensure all records match verified utility bills &amp; logs.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-          <div>
-            <label htmlFor="period-select" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>
+        <div className="flex items-end gap-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="period-select" className="text-xs">
               Reporting Period
-            </label>
+            </Label>
             <select
               id="period-select"
               value={effectivePeriodId}
               onChange={(e) => setPeriodId(e.target.value)}
-              style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid var(--color-border-placeholder)' }}
+              className="rounded-md border border-[#d1d6e0] bg-white px-3 py-2 text-sm"
             >
               {periodsQuery.data?.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -77,9 +80,9 @@ export function DataCollectionPage() {
               ))}
             </select>
           </div>
-          <button type="button" onClick={() => setShowNewPeriod((s) => !s)} style={{ padding: '0.5rem 0.8rem', borderRadius: 6, border: '1px solid var(--color-border-placeholder)', background: 'var(--color-surface-card)', cursor: 'pointer' }}>
+          <Button type="button" variant="outline" onClick={() => setShowNewPeriod((s) => !s)}>
             + New Period
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -87,32 +90,39 @@ export function DataCollectionPage() {
         <NewPeriodForm onSubmit={(input) => newPeriodMutation.mutate(input)} isPending={newPeriodMutation.isPending} />
       )}
 
-      {!effectivePeriodId && <p>Create a reporting period to start entering data.</p>}
+      {!effectivePeriodId && <p className="text-sm text-[#627288]">Create a reporting period to start entering data.</p>}
 
-      {effectivePeriodId &&
-        categoriesQuery.data?.map((category) => (
-          <details
-            key={category.code}
-            open
-            style={{ background: 'var(--color-surface-card)', borderRadius: 8, marginBottom: '0.75rem', padding: '0.25rem 1rem' }}
-          >
-            <summary style={{ cursor: 'pointer', padding: '0.75rem 0', fontWeight: 700 }}>
-              {category.nameEn} / {category.nameZh}
-            </summary>
-            <div style={{ paddingBottom: '1rem' }}>
-              {category.metricDefinitions.map((def) => (
-                <MetricRow
-                  key={def.code}
-                  definition={def}
-                  current={valuesByDefinitionCode.get(def.code)}
-                  dimensionCatalog={dimensionsQuery.data ?? []}
-                  reportingPeriodId={effectivePeriodId}
-                  onSaved={() => queryClient.invalidateQueries({ queryKey: ['metric-values', effectivePeriodId] })}
-                />
-              ))}
-            </div>
-          </details>
-        ))}
+      {effectivePeriodId && (
+        <Accordion type="multiple" defaultValue={categoriesWithData.map((c) => c.code)} className="flex flex-col gap-3">
+          {categoriesWithData.map((category) => {
+            const complete = category.metricDefinitions.every((d) => valuesByDefinitionCode.has(d.code));
+            return (
+              <AccordionItem key={category.code} value={category.code} className="rounded-lg border-none bg-white px-4 shadow-sm">
+                <AccordionTrigger className="text-base font-bold hover:no-underline">
+                  <span className="flex items-center gap-2">
+                    {complete && <CheckCircle className="size-5 text-[#00a878]" aria-hidden="true" />}
+                    {category.nameEn} / {category.nameZh}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col">
+                    {category.metricDefinitions.map((def) => (
+                      <MetricRow
+                        key={def.code}
+                        definition={def}
+                        current={valuesByDefinitionCode.get(def.code)}
+                        dimensionCatalog={dimensionsQuery.data ?? []}
+                        reportingPeriodId={effectivePeriodId}
+                        onSaved={() => queryClient.invalidateQueries({ queryKey: ['metric-values', effectivePeriodId] })}
+                      />
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
+      )}
     </div>
   );
 }
@@ -133,23 +143,29 @@ function NewPeriodForm({
         e.preventDefault();
         onSubmit({ periodCode, startDate, endDate });
       }}
-      style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', background: 'var(--color-surface-card)', padding: '1rem', borderRadius: 8, marginBottom: '1rem' }}
+      className="mb-4 flex items-end gap-3 rounded-lg bg-white p-4 shadow-sm"
     >
-      <div>
-        <label htmlFor="np-code" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>Period Code</label>
-        <input id="np-code" value={periodCode} onChange={(e) => setPeriodCode(e.target.value)} placeholder="Q4 2026" required style={{ padding: '0.4rem' }} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="np-code" className="text-xs">
+          Period Code
+        </Label>
+        <Input id="np-code" value={periodCode} onChange={(e) => setPeriodCode(e.target.value)} placeholder="Q4 2026" required className="w-32" />
       </div>
-      <div>
-        <label htmlFor="np-start" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>Start Date</label>
-        <input id="np-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required style={{ padding: '0.4rem' }} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="np-start" className="text-xs">
+          Start Date
+        </Label>
+        <Input id="np-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
       </div>
-      <div>
-        <label htmlFor="np-end" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600 }}>End Date</label>
-        <input id="np-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required style={{ padding: '0.4rem' }} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="np-end" className="text-xs">
+          End Date
+        </Label>
+        <Input id="np-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
       </div>
-      <button type="submit" disabled={isPending} style={{ padding: '0.5rem 1rem', borderRadius: 6, background: 'var(--color-action-green)', color: 'var(--color-text-on-dark)', border: 'none', cursor: 'pointer' }}>
+      <Button type="submit" disabled={isPending}>
         Create
-      </button>
+      </Button>
     </form>
   );
 }
@@ -185,30 +201,30 @@ function MetricRow({
   const codeChips = [definition.griCode, definition.hkexCode].filter(Boolean);
 
   return (
-    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', padding: '0.6rem 0', borderTop: '1px solid var(--color-border-placeholder)' }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-          {definition.nameEn}{' '}
+    <div className="flex flex-wrap items-end gap-4 border-t border-[#f0f0f0] py-3 first:border-t-0">
+      <div className="min-w-[200px] flex-1">
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-[#1e293b]">
+          {definition.nameEn}
           {codeChips.map((c) => (
-            <span key={c} style={{ background: 'var(--color-status-success-bg)', color: 'var(--color-status-success-fg)', borderRadius: 4, padding: '0 5px', fontSize: '0.7rem', marginLeft: 4 }}>
+            <span key={c} className="rounded bg-[var(--color-status-success-bg)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-status-success-fg)]">
               {c}
             </span>
           ))}
         </div>
-        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{definition.nameZh}</div>
+        <div className="text-xs text-[#627288]">{definition.nameZh}</div>
       </div>
       {definition.dimensionTypes.map((dimType) => {
         const options = dimensionCatalog.find((d) => d.type === dimType)?.values ?? [];
         return (
-          <div key={dimType}>
-            <label htmlFor={`${definition.code}-${dimType}`} style={{ display: 'block', fontSize: '0.75rem' }}>
+          <div key={dimType} className="flex flex-col gap-1">
+            <Label htmlFor={`${definition.code}-${dimType}`} className="text-[11px]">
               {dimType.replace(/_/g, ' ')}
-            </label>
+            </Label>
             <select
               id={`${definition.code}-${dimType}`}
               value={dimensionSelections[dimType] ?? ''}
               onChange={(e) => setDimensionSelections((s) => ({ ...s, [dimType]: e.target.value }))}
-              style={{ padding: '0.4rem', fontSize: '0.85rem' }}
+              className="rounded-md border border-[#d1d6e0] px-2 py-1.5 text-sm"
             >
               <option value="">—</option>
               {options.map((o) => (
@@ -220,24 +236,19 @@ function MetricRow({
           </div>
         );
       })}
-      <div>
-        <label htmlFor={`${definition.code}-value`} style={{ display: 'block', fontSize: '0.75rem' }}>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={`${definition.code}-value`} className="text-[11px]">
           {definition.defaultUnit ?? 'Value'}
-        </label>
+        </Label>
         {definition.valueType === 'TEXT' ? (
-          <input id={`${definition.code}-value`} value={value} onChange={(e) => setValue(e.target.value)} style={{ padding: '0.4rem', width: 220 }} />
+          <Input id={`${definition.code}-value`} value={value} onChange={(e) => setValue(e.target.value)} className="w-56" />
         ) : (
-          <input id={`${definition.code}-value`} type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} style={{ padding: '0.4rem', width: 140 }} />
+          <Input id={`${definition.code}-value`} type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} className="w-36" />
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => mutation.mutate()}
-        disabled={!value || mutation.isPending}
-        style={{ padding: '0.45rem 0.9rem', borderRadius: 6, background: 'var(--color-navy-800)', color: 'var(--color-text-on-dark)', border: 'none', cursor: 'pointer' }}
-      >
+      <Button type="button" variant="secondary" onClick={() => mutation.mutate()} disabled={!value || mutation.isPending}>
         Save
-      </button>
+      </Button>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -10,50 +11,46 @@ export function Layout() {
   const { i18n } = useTranslation();
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-surface-page)' }}>
-      <a href="#main-content" className="skip-link">Skip to main content</a>
-      <header
-        style={{
-          background: 'var(--color-navy-950)',
-          color: 'var(--color-text-on-dark)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '0.9rem 2rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--color-action-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>W</div>
+    <div className="min-h-screen bg-[#f4f6f9]">
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+      <header className="flex items-center justify-between bg-[#0a1628] px-12 py-5 text-white">
+        <div className="flex items-center gap-3">
+          <div className="flex size-8 items-center justify-center rounded-md bg-[#00a878] text-lg font-black">W</div>
           <div>
-            <div style={{ fontWeight: 700 }}>Wing Kai Recycle</div>
-            <div style={{ fontSize: '0.7rem', opacity: 0.8 }}>ESG Client Portal</div>
+            <div className="text-lg font-bold">Wing Kai Recycle</div>
+            <div className="text-[10px] opacity-80">ESG Client Portal</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div role="group" aria-label="Language" style={{ display: 'flex', gap: '0.35rem' }}>
+        <div className="flex items-center gap-4">
+          <div role="group" aria-label="Language" className="flex gap-1.5">
             {(['en', 'zh-HK'] as const).map((lng) => (
               <button
                 key={lng}
                 type="button"
                 aria-pressed={i18n.language === lng}
                 onClick={() => i18n.changeLanguage(lng)}
-                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: 4, border: 'none', cursor: 'pointer', background: i18n.language === lng ? 'var(--color-action-green)' : 'var(--color-navy-700)', color: 'var(--color-text-on-dark)' }}
+                className={`rounded px-2 py-1 text-xs transition-colors ${
+                  i18n.language === lng ? 'bg-[#008660] text-white' : 'bg-[#1b355a] text-white/80'
+                }`}
               >
                 {lng === 'en' ? 'EN' : '繁'}
               </button>
             ))}
           </div>
-          <span>{user?.displayName}</span>
+          <span className="text-sm">{user?.displayName}</span>
           <button
             type="button"
             onClick={logout}
-            style={{ background: 'var(--color-navy-700)', color: 'inherit', border: 'none', borderRadius: 4, padding: '0.4rem 0.9rem', cursor: 'pointer' }}
+            className="flex items-center gap-2 rounded-md bg-[#1b355a] px-4 py-2 text-sm font-semibold hover:bg-[#22436e]"
           >
+            <LogOut className="size-3.5" aria-hidden="true" />
             Logout
           </button>
         </div>
       </header>
-      <main id="main-content" style={{ padding: '2rem' }}>
+      <main id="main-content" className="p-8">
         <Outlet />
       </main>
     </div>

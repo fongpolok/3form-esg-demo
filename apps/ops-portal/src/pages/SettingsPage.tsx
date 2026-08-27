@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { EmissionFactorCategory } from '@esg/shared-validation';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@esg/ui';
 import { createEmissionFactorVersion, listEmissionFactors } from '../api/emission-factors';
 import { useAuth } from '../auth/AuthContext';
 
@@ -40,87 +41,113 @@ export function SettingsPage() {
   if (!isAuditor) {
     return (
       <div>
-        <h1>Settings</h1>
-        <p>Only Auditors can manage emission factors. Other settings land in a later phase.</p>
+        <h1 className="text-[22px] font-bold text-[#1e293b]">Settings</h1>
+        <p className="text-sm text-[#627288]">Only Auditors can manage emission factors. Other settings land in a later phase.</p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 900 }}>
-      <h1>Settings — Emission Factors</h1>
-      <p style={{ color: 'var(--color-text-muted)' }}>
-        Tunable parameters used across every report and derived metric (plan §3d) — versioned, never overwritten in place.
+    <div className="max-w-4xl">
+      <h1 className="text-[22px] font-bold text-[#1e293b]">Settings — Emission Factors</h1>
+      <p className="mb-6 text-sm text-[#627288]">
+        Tunable parameters used across every report and derived metric — versioned, never overwritten in place.
       </p>
 
-      <section style={{ background: 'var(--color-surface-card)', padding: '1.25rem', borderRadius: 8, marginBottom: '1.5rem' }}>
-        <h2 style={{ marginTop: 0 }}>Add New Version</h2>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            mutation.mutate();
-          }}
-          style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}
-        >
-          <div>
-            <label htmlFor="ef-category" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600 }}>Category</label>
-            <select id="ef-category" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as EmissionFactorCategory }))} style={{ padding: '0.4rem' }}>
-              {CATEGORY_OPTIONS.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="ef-code" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600 }}>Code</label>
-            <input id="ef-code" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} required style={{ padding: '0.4rem', width: 160 }} />
-          </div>
-          <div>
-            <label htmlFor="ef-value" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600 }}>Value</label>
-            <input id="ef-value" type="number" step="any" value={form.factorValue} onChange={(e) => setForm((f) => ({ ...f, factorValue: e.target.value }))} required style={{ padding: '0.4rem', width: 120 }} />
-          </div>
-          <div>
-            <label htmlFor="ef-unit" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600 }}>Unit</label>
-            <input id="ef-unit" value={form.factorUnit} onChange={(e) => setForm((f) => ({ ...f, factorUnit: e.target.value }))} placeholder="kgCO2e/kWh" required style={{ padding: '0.4rem', width: 140 }} />
-          </div>
-          <div>
-            <label htmlFor="ef-from" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600 }}>Effective From</label>
-            <input id="ef-from" type="date" value={form.effectiveFrom} onChange={(e) => setForm((f) => ({ ...f, effectiveFrom: e.target.value }))} required style={{ padding: '0.4rem' }} />
-          </div>
-          <div style={{ flex: '1 1 260px' }}>
-            <label htmlFor="ef-source" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600 }}>Source Reference</label>
-            <input id="ef-source" value={form.sourceReference} onChange={(e) => setForm((f) => ({ ...f, sourceReference: e.target.value }))} style={{ padding: '0.4rem', width: '100%' }} />
-          </div>
-          <button type="submit" disabled={mutation.isPending} style={{ padding: '0.5rem 1rem', borderRadius: 6, background: 'var(--color-action-green)', color: 'var(--color-text-on-dark)', border: 'none', cursor: 'pointer' }}>
-            Save New Version
-          </button>
-        </form>
-      </section>
+      <Card className="mb-6 border-none shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Add New Version</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              mutation.mutate();
+            }}
+            className="flex flex-wrap items-end gap-3"
+          >
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ef-category" className="text-xs">
+                Category
+              </Label>
+              <select id="ef-category" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as EmissionFactorCategory }))} className="rounded-md border border-[#d1d6e0] px-2 py-2 text-sm">
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ef-code" className="text-xs">
+                Code
+              </Label>
+              <Input id="ef-code" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} required className="w-40" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ef-value" className="text-xs">
+                Value
+              </Label>
+              <Input id="ef-value" type="number" step="any" value={form.factorValue} onChange={(e) => setForm((f) => ({ ...f, factorValue: e.target.value }))} required className="w-28" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ef-unit" className="text-xs">
+                Unit
+              </Label>
+              <Input id="ef-unit" value={form.factorUnit} onChange={(e) => setForm((f) => ({ ...f, factorUnit: e.target.value }))} placeholder="kgCO2e/kWh" required className="w-36" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ef-from" className="text-xs">
+                Effective From
+              </Label>
+              <Input id="ef-from" type="date" value={form.effectiveFrom} onChange={(e) => setForm((f) => ({ ...f, effectiveFrom: e.target.value }))} required />
+            </div>
+            <div className="flex min-w-[220px] flex-1 flex-col gap-1.5">
+              <Label htmlFor="ef-source" className="text-xs">
+                Source Reference
+              </Label>
+              <Input id="ef-source" value={form.sourceReference} onChange={(e) => setForm((f) => ({ ...f, sourceReference: e.target.value }))} />
+            </div>
+            <Button type="submit" disabled={mutation.isPending}>
+              Save New Version
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <section>
-        <h2>Current &amp; Historical Factors</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--color-border-placeholder)' }}>
-              <th scope="col" style={{ padding: '0.5rem' }}>Code</th>
-              <th scope="col" style={{ padding: '0.5rem' }}>Value</th>
-              <th scope="col" style={{ padding: '0.5rem' }}>Effective From</th>
-              <th scope="col" style={{ padding: '0.5rem' }}>Effective To</th>
-              <th scope="col" style={{ padding: '0.5rem' }}>Source</th>
-            </tr>
-          </thead>
-          <tbody>
-            {factorsQuery.data?.map((f) => (
-              <tr key={f.id} style={{ borderBottom: '1px solid var(--color-border-placeholder)', opacity: f.effectiveTo ? 0.55 : 1 }}>
-                <td style={{ padding: '0.5rem' }}>{f.code}</td>
-                <td style={{ padding: '0.5rem' }}>{f.factorValue} {f.factorUnit}</td>
-                <td style={{ padding: '0.5rem' }}>{new Date(f.effectiveFrom).toLocaleDateString('en-HK')}</td>
-                <td style={{ padding: '0.5rem' }}>{f.effectiveTo ? new Date(f.effectiveTo).toLocaleDateString('en-HK') : 'current'}</td>
-                <td style={{ padding: '0.5rem', maxWidth: 320 }}>{f.sourceReference}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      <Card className="border-none shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Current &amp; Historical Factors</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Value</TableHead>
+                <TableHead>Effective From</TableHead>
+                <TableHead>Effective To</TableHead>
+                <TableHead>Source</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {factorsQuery.data?.map((f) => (
+                <TableRow key={f.id} className={f.effectiveTo ? 'opacity-60' : ''}>
+                  <TableCell className="font-medium">{f.code}</TableCell>
+                  <TableCell>
+                    {f.factorValue} {f.factorUnit}
+                  </TableCell>
+                  <TableCell>{new Date(f.effectiveFrom).toLocaleDateString('en-HK')}</TableCell>
+                  <TableCell>{f.effectiveTo ? new Date(f.effectiveTo).toLocaleDateString('en-HK') : 'current'}</TableCell>
+                  <TableCell className="max-w-[280px] text-xs text-[#627288]">{f.sourceReference}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

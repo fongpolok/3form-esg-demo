@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Navigate } from 'react-router-dom';
+import { Mail, Lock } from 'lucide-react';
 import { loginSchema, type LoginInput } from '@esg/shared-validation';
+import { Button, Input, Label } from '@esg/ui';
 import { useAuth } from '../auth/AuthContext';
 import { ApiError } from '../api/client';
 
@@ -33,55 +35,65 @@ export function LoginPage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-navy-950)' }}>
-      <div style={{ background: 'var(--color-surface-card)', borderRadius: 12, padding: '2.5rem', width: 420 }}>
-        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Wing Kai Recycle</h1>
-        <p style={{ color: 'var(--color-text-muted)', marginTop: 0, marginBottom: '1.5rem' }}>ESG Client Portal</p>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-[#0a1628] p-6">
+      <div className="w-full max-w-[420px] rounded-xl bg-white p-10 shadow-2xl">
+        <h1 className="text-2xl font-bold text-[#0a1628]">Wing Kai Recycle</h1>
+        <p className="mb-6 text-sm text-[#627288]">ESG Client Portal</p>
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
           {serverError && (
-            <div role="alert" style={{ color: 'var(--color-status-danger-fg)', marginBottom: '1rem' }}>
+            <div role="alert" className="rounded-md bg-[var(--color-status-danger-bg)] p-3 text-sm text-[var(--color-status-danger-fg)]">
               {serverError === 'NOT_A_CLIENT_ACCOUNT'
                 ? 'This account is not a client account. Please use the staff portal instead.'
                 : 'The email or password you entered is incorrect.'}
             </div>
           )}
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="email" style={{ display: 'block', fontWeight: 600, marginBottom: '0.35rem' }}>Email Address</label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="username"
-              aria-invalid={errors.email ? 'true' : undefined}
-              aria-describedby={errors.email ? 'email-error' : undefined}
-              {...register('email')}
-              style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid var(--color-border-placeholder)', borderRadius: 6, background: 'var(--color-surface-input)' }}
-            />
-            {errors.email && <p id="email-error" style={{ color: 'var(--color-status-danger-fg)', fontSize: '0.85rem' }}>{errors.email.message}</p>}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email">Email Address</Label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#64748b]" aria-hidden="true" />
+              <Input
+                id="email"
+                type="email"
+                autoComplete="username"
+                aria-invalid={errors.email ? 'true' : undefined}
+                aria-describedby={errors.email ? 'email-error' : undefined}
+                {...register('email')}
+                className="bg-[#f8fafc] pl-10"
+              />
+            </div>
+            {errors.email && (
+              <p id="email-error" className="text-sm text-[var(--color-status-danger-fg)]">
+                {errors.email.message}
+              </p>
+            )}
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label htmlFor="password" style={{ display: 'block', fontWeight: 600, marginBottom: '0.35rem' }}>Password</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              aria-invalid={errors.password ? 'true' : undefined}
-              aria-describedby={errors.password ? 'password-error' : undefined}
-              {...register('password')}
-              style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid var(--color-border-placeholder)', borderRadius: 6, background: 'var(--color-surface-input)' }}
-            />
-            {errors.password && <p id="password-error" style={{ color: 'var(--color-status-danger-fg)', fontSize: '0.85rem' }}>{errors.password.message}</p>}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#64748b]" aria-hidden="true" />
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                aria-invalid={errors.password ? 'true' : undefined}
+                aria-describedby={errors.password ? 'password-error' : undefined}
+                {...register('password')}
+                className="bg-[#f8fafc] pl-10"
+              />
+            </div>
+            {errors.password && (
+              <p id="password-error" className="text-sm text-[var(--color-status-danger-fg)]">
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            style={{ width: '100%', padding: '0.7rem', background: 'var(--color-action-green)', color: 'var(--color-text-on-dark)', border: 'none', borderRadius: 6, fontWeight: 600, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
-          >
+          <Button type="submit" disabled={isSubmitting} className="w-full py-6 text-[15px] font-semibold">
             {isSubmitting ? 'Signing in…' : 'Sign In'}
-          </button>
+          </Button>
         </form>
       </div>
     </main>

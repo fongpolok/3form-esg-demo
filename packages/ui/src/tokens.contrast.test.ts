@@ -15,6 +15,7 @@ const CONTRAST_PAIRINGS: Array<{ name: string; fg: string; bg: string; minRatio:
   { name: 'muted helper text on white card', fg: text.muted, bg: surface.card, minRatio: 4.5 },
   { name: 'sidebar text on navy950', fg: text.onDark, bg: brand.navy950, minRatio: 4.5 },
   { name: 'active nav item text on navy800', fg: text.onDark, bg: brand.navy800, minRatio: 4.5 },
+  { name: 'inactive nav item text on navy950', fg: text.mutedOnDark, bg: brand.navy950, minRatio: 4.5 },
   { name: 'primary button text (action.green)', fg: text.onDark, bg: action.green, minRatio: 4.5 },
   { name: 'success status pill', fg: status.success.fg, bg: status.success.bg, minRatio: 4.5 },
   { name: 'info status pill', fg: status.info.fg, bg: status.info.bg, minRatio: 4.5 },
