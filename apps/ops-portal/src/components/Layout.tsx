@@ -40,7 +40,7 @@ export function Layout() {
         className="flex w-[240px] shrink-0 flex-col bg-[#0a1628] py-8 text-white"
       >
         <div className="flex flex-col gap-1.5 px-6 pb-8">
-          <span className="text-xl font-bold">Wing Kai Recycle</span>
+          <span className="text-xl font-bold">Hong Kong Recycling Co</span>
           <span className="text-xs font-medium text-white/70">{t('appName')}</span>
         </div>
         <ul className="flex flex-1 flex-col gap-1">

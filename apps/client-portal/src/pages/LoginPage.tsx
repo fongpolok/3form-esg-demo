@@ -37,7 +37,7 @@ export function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-[#0a1628] p-6">
       <div className="w-full max-w-[420px] rounded-xl bg-white p-10 shadow-2xl">
-        <h1 className="text-2xl font-bold text-[#0a1628]">Wing Kai Recycle</h1>
+        <h1 className="text-2xl font-bold text-[#0a1628]">Hong Kong Recycling Co</h1>
         <p className="mb-6 text-sm text-[#627288]">ESG Client Portal</p>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">

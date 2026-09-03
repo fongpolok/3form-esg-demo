@@ -20,7 +20,7 @@ async function main() {
   const passwordHash = await argon2.hash(DEMO_PASSWORD);
 
   const supplier = await prisma.supplier.create({
-    data: { name_en: 'Wing Kai Recycle', name_zh: '永佳回收', brn: 'DEMO-0001' },
+    data: { name_en: 'Hong Kong Recycling Co', name_zh: '香港回收有限公司', brn: 'DEMO-0001' },
   });
 
   const facility = await prisma.facility.create({

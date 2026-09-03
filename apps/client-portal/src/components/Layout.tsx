@@ -17,9 +17,9 @@ export function Layout() {
       </a>
       <header className="flex items-center justify-between bg-[#0a1628] px-12 py-5 text-white">
         <div className="flex items-center gap-3">
-          <div className="flex size-8 items-center justify-center rounded-md bg-[#00a878] text-lg font-black">W</div>
+          <div className="flex size-8 items-center justify-center rounded-md bg-[#00a878] text-lg font-black">H</div>
           <div>
-            <div className="text-lg font-bold">Wing Kai Recycle</div>
+            <div className="text-lg font-bold">Hong Kong Recycling Co</div>
             <div className="text-[10px] opacity-80">ESG Client Portal</div>
           </div>
         </div>

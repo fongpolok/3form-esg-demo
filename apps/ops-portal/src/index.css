@@ -48,7 +48,7 @@
 
   /* shadcn semantic tokens, mapped to the palette above rather than the
      generic shadcn defaults — this is what makes Button/Card/Table/etc.
-     render in the Wing Kai palette without touching their source. */
+     render in the brand palette without touching their source. */
   --background: var(--color-surface-page);
   --foreground: var(--color-text-icon);
   --card: var(--color-surface-card);

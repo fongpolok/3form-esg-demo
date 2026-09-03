@@ -44,7 +44,7 @@ export function LoginPage() {
     <main className="bg-[#0a1628] flex min-h-screen flex-col items-center justify-center p-6">
       <div className="w-full max-w-[460px] rounded-xl bg-white p-12 shadow-2xl">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <h1 className="text-[28px] font-bold text-[#0a1628]">Wing Kai Recycle</h1>
+          <h1 className="text-[28px] font-bold text-[#0a1628]">Hong Kong Recycling Co</h1>
           <p className="text-sm font-semibold uppercase tracking-wide text-[#008660]">ESG Auditing Portal</p>
         </div>
 

@@ -61,7 +61,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-xl font-bold text-[#1e293b]">Wing Kai Recycle — ESG Dashboard</h1>
+      <h1 className="mb-1 text-xl font-bold text-[#1e293b]">Hong Kong Recycling Co — ESG Dashboard</h1>
       <p className="mb-6 text-sm text-[#627288]">Hong Kong Processing Plant #1 (Tsing Yi)</p>
       {isLoading && (
         <p role="status" className="text-sm text-[#627288]">
