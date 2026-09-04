@@ -28,8 +28,14 @@ export function LoginPage() {
     } catch (err) {
       if (err instanceof Error && err.message === 'NOT_A_CLIENT_ACCOUNT') {
         setServerError('NOT_A_CLIENT_ACCOUNT');
+      } else if (err instanceof ApiError) {
+        setServerError(err.code);
       } else {
-        setServerError(err instanceof ApiError ? err.code : 'AUTH.INVALID_CREDENTIALS');
+        // fetch() itself threw (DNS/network failure, server unreachable) —
+        // not a real 401 from the API, so don't tell the user their
+        // password is wrong when the real problem is the server not
+        // responding at all.
+        setServerError('NETWORK_ERROR');
       }
     }
   }
@@ -45,7 +51,9 @@ export function LoginPage() {
             <div role="alert" className="rounded-md bg-[var(--color-status-danger-bg)] p-3 text-sm text-[var(--color-status-danger-fg)]">
               {serverError === 'NOT_A_CLIENT_ACCOUNT'
                 ? 'This account is not a client account. Please use the staff portal instead.'
-                : 'The email or password you entered is incorrect.'}
+                : serverError === 'NETWORK_ERROR'
+                  ? 'Could not reach the server. Check your connection and try again.'
+                  : 'The email or password you entered is incorrect.'}
             </div>
           )}
 
